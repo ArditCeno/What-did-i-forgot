@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="sq">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>To-Do Interaktive</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:beige; color:black; }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 24px; }
+    .card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 12px; font-size: 24px; letter-spacing: .2px; }
+    .row { display:flex; gap: 10px; flex-wrap: wrap; }
+    input, button, select { border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.25); color:#e9eefc; padding: 10px 12px; }
+    input::placeholder { color: rgba(233,238,252,.6); }
+    button { cursor:pointer; background: rgba(99,102,241,.25); border-color: rgba(99,102,241,.5); }
+    button:hover { background: rgba(99,102,241,.35); }
+    button.danger { background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.45); }
+    button.danger:hover { background: rgba(239,68,68,.28); }
+    .grow { flex: 1 1 260px; }
+    .list { margin-top: 14px; display:flex; flex-direction: column; gap: 10px; }
+    .item { display:flex; align-items:center; gap: 10px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); }
+    .item.done { opacity: .75; }
+    .title { flex: 1; }
+    .title.done { text-decoration: line-through; color: brown; }
+    .meta { font-size: 12px; color: black; }
+    .pill { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: pink; }
+    .footer { margin-top: 10px; display:flex; justify-content: space-between; align-items:center; gap: 10px; flex-wrap: wrap; }
+    a { color:#a5b4fc; }
+    .site-footer {
+  margin-top: 30px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+}
+
+.footer-inner {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  color: black;
+  font-size: 14px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 12px;
+}
+
+.footer-links a {
+  text-decoration: none;
+  color: black;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.footer-copy {
+  font-size: 12px;
+  opacity: .7;
+}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>✅ To-Do Interaktive </h1>
+
+      <div class="row" style="margin-bottom:10px;">
+        <input id="todoInput" class="grow" placeholder="Shkruaj një detyrë… (p.sh. 'Bli qumësht')" />
+        <button id="addBtn">Shto</button>
+      </div>
+
+      <div class="row">
+        <input id="searchInput" class="grow" placeholder="Kërko në listë…" />
+        <select id="filterSelect">
+          <option value="all">Të gjitha</option>
+          <option value="active">Vetëm aktive</option>
+          <option value="done">Vetëm të kryera</option>
+        </select>
+        <button id="clearDoneBtn" class="danger">Fshi të kryerat</button>
+      </div>
+
+      <div class="list" id="list"></div>
+
+      <div class="footer">
+        <div class="meta" id="countMeta">0 detyra</div>
+        <div class="meta">Këshillë: Kliko kutinë për ta shënuar si të kryer.</div>
+      </div>
+    </div>
+    <footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <strong>To-Do Interaktive</strong><br/>
+      Krijuar nga A.Ceno
+    </div>
+
+    <div class="footer-links">
+      <a href="#">Kreu</a>
+      <a href="https://linkedin.com">Rreth</a>
+      <a href="tel=069****832">Kontakt</a>
+    </div>
+
+    <div class="footer-copy">
+      © <b>StarBoy AC</b> – Të gjitha të drejtat e rezervuara 
+    </div>
+  </div>
+</footer>
+
+  </div>
+
+  <script>
+
+    const KEY = "todo_interactive_v1";
+    const load = () => {
+      try { return JSON.parse(localStorage.getItem(KEY)) ?? []; }
+      catch { return []; }
+    };
+    const save = (items) => localStorage.setItem(KEY, JSON.stringify(items));
+
+    let todos = load();
+
+    const $ = (id) => document.getElementById(id);
+    const todoInput = $("todoInput");
+    const addBtn = $("addBtn");
+    const searchInput = $("searchInput");
+    const filterSelect = $("filterSelect");
+    const clearDoneBtn = $("clearDoneBtn");
+    const list = $("list");
+    const countMeta = $("countMeta");
+
+    const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+    const fmt = (ts) => new Date(ts).toLocaleString("sq-AL", { dateStyle: "medium", timeStyle: "short" });
+
+    function getFiltered() {
+      const q = searchInput.value.trim().toLowerCase();
+      const f = filterSelect.value;
+
+      return todos.filter(t => {
+        const matchesQ = !q || t.text.toLowerCase().includes(q);
+        const matchesF = f === "all" || (f === "active" && !t.done) || (f === "done" && t.done);
+        return matchesQ && matchesF;
+      });
+    }
+
+    function render() {
+      const shown = getFiltered();
+      list.innerHTML = "";
+
+      if (shown.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "item";
+        empty.innerHTML = `<div class="meta">S’ka asgjë për të shfaqur. Shto një detyrë sipër 🙂</div>`;
+        list.appendChild(empty);
+      } else {
+        for (const t of shown) {
+          const row = document.createElement("div");
+          row.className = "item" + (t.done ? " done" : "");
+
+          row.innerHTML = `
+            <input type="checkbox" ${t.done ? "checked" : ""} aria-label="done" />
+            <div class="title ${t.done ? "done" : ""}">
+              <div>${escapeHtml(t.text)}</div>
+              <div class="meta">Shtuar: ${fmt(t.createdAt)}</div>
+            </div>
+            <span class="pill">${t.done ? "E kryer" : "Aktive"}</span>
+            <button class="danger" title="Fshi">Fshi</button>
+          `;
+
+          row.querySelector('input[type="checkbox"]').addEventListener("change", () => {
+            t.done = !t.done;
+            save(todos);
+            render();
+          });
+
+          row.querySelector("button").addEventListener("click", () => {
+            todos = todos.filter(x => x.id !== t.id);
+            save(todos);
+            render();
+          });
+
+          list.appendChild(row);
+        }
+      }
+
+      const total = todos.length;
+      const done = todos.filter(t => t.done).length;
+      countMeta.textContent = `${total} detyra • ${done} të kryera • ${total - done} aktive`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, c => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+      }[c]));
+    }
+
+    function addTodo() {
+      const text = todoInput.value.trim();
+      if (!text) return;
+
+      todos.unshift({ id: uid(), text, done: false, createdAt: Date.now() });
+      todoInput.value = "";
+      save(todos);
+      render();
+      todoInput.focus();
+    }
+
+    addBtn.addEventListener("click", addTodo);
+    todoInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addTodo();
+    });
+
+    searchInput.addEventListener("input", render);
+    filterSelect.addEventListener("change", render);
+
+    clearDoneBtn.addEventListener("click", () => {
+      todos = todos.filter(t => !t.done);
+      save(todos);
+      render();
+    });
+
+
+    render();
+  </script>
+</body>
+</html>
+
